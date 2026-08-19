@@ -9,11 +9,9 @@
 .seat,.blankSeat,.aisle,.blankAisle{width:var(--seat)!important;min-width:var(--seat)!important;max-width:var(--seat)!important;height:var(--h)!important;flex:none!important;margin:0!important}
 .stage{grid-column:span 3!important;width:auto!important;min-width:0!important;max-width:none!important;height:var(--h)!important;flex:none!important;margin:0!important}
 .seat.extra{margin:0!important}
-/* Larger, more legible labels. The actual family label is drawn by seating-groups.js over the whole group. */
 .seat{font-size:10px!important}
 .gname{visibility:hidden!important}
-.groupOverlay{position:absolute;top:0;height:var(--h);display:flex;align-items:center;justify-content:center;background:#dff0e4;border:1.5px solid #5f8f6d;border-radius:6px;z-index:4;pointer-events:none;padding:0 5px;font-size:12px;font-weight:850;line-height:1;color:#17211c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px #0000000d}
+.groupOverlay{position:absolute;top:0;height:var(--h);display:flex;align-items:center;justify-content:center;background:#dff0e4;border:1.5px solid #5f8f6d;border-radius:6px;z-index:4;pointer-events:none;padding:0 5px;font-size:13px;font-weight:900;line-height:1;color:#17211c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px #0000000d}
 .groupOverlay.selected{outline:3px solid #7158b6;outline-offset:1px}
-/* Never let visual grouping change geometry. */
 .seat.taken{margin:0!important;transform:none!important}
 @media(max-width:1120px){.hall{width:100%!important}.hallgrid{padding-left:22px!important;padding-right:22px!important}}
