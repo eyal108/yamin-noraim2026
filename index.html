@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>רישום לימים נוראים</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#17211c;background:#f4f1e8}
+*{box-sizing:border-box}
+body{margin:0;padding:22px 14px}
+.wrap{max-width:620px;margin:auto}
+h1{text-align:center;margin:8px 0 4px;font-size:30px}
+.sub{text-align:center;color:#657068;margin:0 0 22px}
+.card{background:white;border-radius:20px;padding:20px;box-shadow:0 8px 28px #00000012;margin-bottom:16px}
+label{display:block;font-weight:700;margin-bottom:7px}
+input{width:100%;font:inherit;font-size:18px;padding:13px;border:1px solid #ccd2cc;border-radius:12px}
+h2{font-size:21px;margin:0 0 14px}
+.row{margin:16px 0}
+.title{font-weight:700;margin-bottom:8px}
+.nums{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
+.num{border:1px solid #c9d0ca;background:#fafbf9;border-radius:10px;padding:11px 0;font-size:17px;cursor:pointer}
+.num.sel{background:#263d31;color:white;border-color:#263d31}
+.submit{width:100%;border:0;background:#263d31;color:white;font-size:19px;font-weight:700;padding:15px;border-radius:13px;cursor:pointer}
+.submit:disabled{opacity:.6}
+.msg,.existing{display:none;padding:12px;border-radius:11px;margin:12px 0}
+.msg.ok{display:block;background:#edf4ef;color:#24402f}
+.msg.err{display:block;background:#fff0ef;color:#8b2820}
+.existing{background:#f3ead1;color:#6a5420}
+.existing.show{display:block}
+</style>
+</head>
+<body>
+<main class="wrap">
+<h1>רישום לימים נוראים</h1>
+<p class="sub">בחירת מקומות לפי משפחה</p>
+<form id="form">
+  <div class="card">
+    <label for="family">שם משפחה</label>
+    <input id="family" autocomplete="family-name" required>
+    <div id="existing" class="existing">נמצאה הרשמה קיימת — הנתונים נטענו וניתן לערוך אותם.</div>
+    <div id="msg" class="msg"></div>
+  </div>
+  <div class="card">
+    <h2>ראש השנה</h2>
+    <div class="row"><div class="title">גברים</div><div class="nums" data-key="rh_men"></div></div>
+    <div class="row"><div class="title">נשים</div><div class="nums" data-key="rh_women"></div></div>
+  </div>
+  <div class="card">
+    <h2>יום כיפור</h2>
+    <div class="row"><div class="title">גברים</div><div class="nums" data-key="yk_men"></div></div>
+    <div class="row"><div class="title">נשים</div><div class="nums" data-key="yk_women"></div></div>
+  </div>
+  <button id="save" class="submit" type="submit">שמירת הרישום</button>
+</form>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://fhilbjbuhtqdwvxhiedz.supabase.co";
+const SUPABASE_KEY = "sb_publishable_sXoO_u65OB-SPt9OFPiz5A_XMUIIprl";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+});
+const state = { rh_men:null, rh_women:null, yk_men:null, yk_women:null };
+let lookupTimer = null;
+function normalizeFamily(s) { return s.trim().replace(/\s+/g, " ").toLocaleLowerCase("he-IL"); }
+document.querySelectorAll(".nums").forEach(box => {
+  for (let i=0; i<=6; i++) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "num"; b.textContent = i;
+    b.addEventListener("click", () => choose(box.dataset.key, i));
+    box.appendChild(b);
+  }
+});
+function choose(key, value) {
+  state[key] = value;
+  const box = document.querySelector(`[data-key="${key}"]`);
+  [...box.children].forEach((b,i) => b.classList.toggle("sel", i === value));
+}
+function showMsg(text, error=false) {
+  const el = document.getElementById("msg"); el.textContent = text;
+  el.className = "msg " + (error ? "err" : "ok");
+}
+function clearMsg() { const el = document.getElementById("msg"); el.textContent = ""; el.className = "msg"; }
+function clearSelections() {
+  for (const k of Object.keys(state)) {
+    state[k] = null;
+    const box = document.querySelector(`[data-key="${k}"]`);
+    [...box.children].forEach(b => b.classList.remove("sel"));
+  }
+}
+async function lookupFamily() {
+  const family = document.getElementById("family").value.trim();
+  const normalized = normalizeFamily(family);
+  document.getElementById("existing").classList.remove("show");
+  clearMsg();
+  if (!normalized) { clearSelections(); return; }
+  const { data, error } = await db.from("yamim_noraim_registrations")
+    .select("family_name,rh_men,rh_women,yk_men,yk_women")
+    .eq("family_name_normalized", normalized).maybeSingle();
+  if (normalizeFamily(document.getElementById("family").value) !== normalized) return;
+  if (error) { showMsg("לא ניתן לבדוק כרגע אם המשפחה קיימת.", true); return; }
+  if (data) {
+    choose("rh_men", data.rh_men); choose("rh_women", data.rh_women);
+    choose("yk_men", data.yk_men); choose("yk_women", data.yk_women);
+    document.getElementById("existing").classList.add("show");
+  } else clearSelections();
+}
+document.getElementById("family").addEventListener("input", () => {
+  clearTimeout(lookupTimer); lookupTimer = setTimeout(lookupFamily, 450);
+});
+document.getElementById("family").addEventListener("blur", lookupFamily);
+document.getElementById("form").addEventListener("submit", async (e) => {
+  e.preventDefault(); clearMsg();
+  const family = document.getElementById("family").value.trim().replace(/\s+/g, " ");
+  const normalized = normalizeFamily(family);
+  if (!family) return showMsg("יש להזין שם משפחה.", true);
+  if (Object.values(state).some(v => v === null)) return showMsg("יש לבחור מספר בכל ארבע האפשרויות, גם אם הוא 0.", true);
+  const save = document.getElementById("save"); save.disabled = true; save.textContent = "שומר...";
+  const payload = { family_name: family, family_name_normalized: normalized, rh_men: state.rh_men, rh_women: state.rh_women, yk_men: state.yk_men, yk_women: state.yk_women };
+  const { error } = await db.from("yamim_noraim_registrations").upsert(payload, { onConflict: "family_name_normalized" });
+  save.disabled = false; save.textContent = "שמירת הרישום";
+  if (error) return showMsg("לא הצלחנו לשמור את הרישום. נסו שוב.", true);
+  document.getElementById("existing").classList.add("show");
+  showMsg("הרישום נשמר בהצלחה.");
+});
+</script>
+</body>
+</html>
