@@ -8,7 +8,9 @@
 .block{display:contents!important}
 .seat,.blankSeat,.aisle,.blankAisle{width:var(--seat)!important;min-width:var(--seat)!important;max-width:var(--seat)!important;height:var(--h)!important;flex:none!important;margin:0!important}
 .stage{grid-column:span 3!important;width:auto!important;min-width:0!important;max-width:none!important;height:var(--h)!important;flex:none!important;margin:0!important}
-.seat.extra{margin:0!important}
+/* Row 8 aisle replacement seats are ordinary seats visually. */
+.seat.extra{margin:0!important;background:#f8faf8!important;border-color:#9da9a1!important}
+.seat.extra.taken{background:#dff0e4!important;border-color:#6d9b7a!important}
 .seat{font-size:10px!important}
 .gname{visibility:hidden!important}
 .groupOverlay{position:absolute;top:0;height:var(--h);display:flex;align-items:center;justify-content:center;background:#dff0e4;border:1.5px solid #5f8f6d;border-radius:6px;z-index:4;pointer-events:none;padding:0 5px;font-size:13px;font-weight:900;line-height:1;color:#17211c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px #0000000d}
