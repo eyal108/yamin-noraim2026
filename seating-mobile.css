@@ -1,0 +1,50 @@
+@media (max-width: 800px), (pointer: coarse){
+  body{padding:6px!important;padding-bottom:78px!important}
+  .wrap{max-width:none!important;width:100%!important}
+  h1{font-size:22px;margin:3px 0!important}
+  .muted{font-size:12px;line-height:1.35}
+  .top{gap:4px!important;margin:7px 0!important}
+  .top .label{font-size:11px}
+  .top .tab,.top .btn{padding:6px 8px!important;font-size:11px;border-radius:7px!important}
+  .summary{gap:4px!important;margin:5px 0 7px!important;overflow-x:auto;flex-wrap:nowrap!important;padding-bottom:2px}
+  .pill{white-space:nowrap;font-size:11px!important;padding:5px 7px!important}
+  .workspace{display:block!important;direction:rtl!important}
+  .requests,.hall{position:static!important;max-height:none!important;width:100%!important;margin:0!important;border-radius:10px!important;box-shadow:none!important;padding:7px!important}
+  .mobile-view-hall .requests{display:none!important}
+  .mobile-view-hall .hall{display:block!important}
+  .mobile-view-men .hall,.mobile-view-men .womenReq{display:none!important}
+  .mobile-view-men .menReq{display:block!important}
+  .mobile-view-women .hall,.mobile-view-women .menReq{display:none!important}
+  .mobile-view-women .womenReq{display:block!important}
+  .mobileNav{position:sticky;top:0;z-index:30;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#f4f1e8;padding:5px 0 7px;margin-bottom:4px}
+  .mobileNav button{border:1px solid #bfc7c1;background:#fff;color:#263d31;border-radius:8px;padding:8px 4px;font-weight:800;font-size:12px}
+  .mobileNav button.active{background:#263d31;color:#fff;border-color:#263d31}
+  .requests h3{font-size:17px;margin:2px 0 3px!important}
+  .help{font-size:11px!important}
+  .family{padding:9px 7px!important;border:1px solid #e2e7e3!important;border-radius:9px;margin:6px 0;background:#fff}
+  .fname{font-size:15px!important}
+  .frag{padding:6px!important;min-height:40px;touch-action:manipulation}
+  .fseat{width:28px!important;height:27px!important}
+  .splitmini{padding:7px 9px!important;font-size:12px!important}
+  .hall{overflow-x:auto!important;overflow-y:visible!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x pan-y;scrollbar-gutter:auto!important;direction:ltr!important;padding:6px 0 12px!important}
+  .hall>.front,.hall>.desc,.hall>.tools,.hall>.legend,.hall>.status{margin-left:7px;margin-right:7px;direction:rtl}
+  .front{font-size:11px!important;grid-template-columns:1fr 82px 1fr!important}
+  .desc{font-size:11px!important;line-height:1.35}
+  .hallgrid{padding:0 10px!important;gap:2px!important;margin:0!important;width:max-content!important;min-width:max-content!important;justify-content:start!important}
+  .divider{width:5px!important}
+  .title{font-size:12px!important;padding:5px!important}
+  .rn{font-size:10px!important}
+  .seat{touch-action:manipulation;min-height:36px!important}
+  .groupOverlay{font-size:12px!important;font-weight:900!important;padding:0 3px!important;touch-action:manipulation}
+  .mobileHallNav{position:sticky;left:6px;right:6px;z-index:20;display:flex;gap:5px;justify-content:center;direction:rtl;background:#fff;padding:5px 7px;margin:0 7px 6px;border:1px solid #e2e6e3;border-radius:8px}
+  .mobileHallNav button{border:1px solid #c4ccc6;background:#fff;border-radius:7px;padding:6px 11px;font-size:11px;font-weight:800;color:#263d31}
+  .touchSelected{outline:3px solid #7357b6!important;outline-offset:2px!important}
+  .touchTargetHint{animation:seatPulse 1.2s ease-in-out infinite alternate}
+  @keyframes seatPulse{from{box-shadow:0 0 0 0 rgba(70,110,80,.15)}to{box-shadow:0 0 0 3px rgba(70,110,80,.22)}}
+  .touchBar{position:fixed;z-index:100;bottom:8px;left:8px;right:8px;background:#263d31;color:white;border-radius:12px;padding:9px 11px;box-shadow:0 6px 22px #0005;display:flex;align-items:center;gap:8px;direction:rtl}
+  .touchBarText{flex:1;font-size:12px;line-height:1.35;font-weight:700}
+  .touchBar button{border:1px solid #ffffff55;background:#fff;color:#263d31;border-radius:8px;padding:7px 10px;font-weight:800}
+  .tools{font-size:12px!important}
+  .tools .actions{gap:5px!important}
+  .tools .btn,.tools select{padding:7px!important;font-size:12px!important}
+}
