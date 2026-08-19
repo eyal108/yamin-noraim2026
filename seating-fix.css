@@ -1,1 +1,19 @@
-.seat.extra{margin-left:2px;margin-right:2px}
+/* Fixed-column seating geometry: every row uses the same chair-width grid. */
+.hall{min-width:0!important;overflow-x:auto!important;overflow-y:visible!important;direction:ltr!important;scrollbar-gutter:stable both-edges;padding-left:14px!important;padding-right:14px!important}
+.hall>.front,.hall>.desc,.hall>.tools,.hall>.legend,.hall>.status{direction:rtl}
+.hallgrid{display:grid!important;grid-template-columns:max-content 6px max-content!important;gap:2px!important;justify-content:start!important;align-items:start!important;width:max-content!important;min-width:max-content!important;margin:0!important;padding:0 18px!important;direction:ltr!important}
+.section{direction:rtl!important;min-width:max-content!important}
+.row{display:grid!important;grid-template-columns:20px max-content!important;align-items:center!important;height:38px!important;margin-bottom:2px!important;direction:rtl!important}
+.rowseats{display:grid!important;grid-auto-flow:column!important;grid-auto-columns:var(--seat)!important;column-gap:var(--gap)!important;align-items:center!important;direction:rtl!important;position:relative!important;width:max-content!important;min-width:max-content!important}
+.block{display:contents!important}
+.seat,.blankSeat,.aisle,.blankAisle{width:var(--seat)!important;min-width:var(--seat)!important;max-width:var(--seat)!important;height:var(--h)!important;flex:none!important;margin:0!important}
+.stage{grid-column:span 3!important;width:auto!important;min-width:0!important;max-width:none!important;height:var(--h)!important;flex:none!important;margin:0!important}
+.seat.extra{margin:0!important}
+/* Larger, more legible labels. The actual family label is drawn by seating-groups.js over the whole group. */
+.seat{font-size:10px!important}
+.gname{visibility:hidden!important}
+.groupOverlay{position:absolute;top:0;height:var(--h);display:flex;align-items:center;justify-content:center;background:#dff0e4;border:1.5px solid #5f8f6d;border-radius:6px;z-index:4;pointer-events:none;padding:0 5px;font-size:12px;font-weight:850;line-height:1;color:#17211c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 2px #0000000d}
+.groupOverlay.selected{outline:3px solid #7158b6;outline-offset:1px}
+/* Never let visual grouping change geometry. */
+.seat.taken{margin:0!important;transform:none!important}
+@media(max-width:1120px){.hall{width:100%!important}.hallgrid{padding-left:22px!important;padding-right:22px!important}}
