@@ -1,26 +1,37 @@
 (()=>{
-const style=document.createElement('style');
-style.textContent=`
-.seat.group-single{border:1px solid #6d9b7a!important;border-radius:6px!important}
-.seat.group-start{border:1px solid #6d9b7a!important;border-left:0!important;border-radius:0 6px 6px 0!important}
-.seat.group-middle{border-top:1px solid #6d9b7a!important;border-bottom:1px solid #6d9b7a!important;border-right:0!important;border-left:0!important;border-radius:0!important}
-.seat.group-end{border:1px solid #6d9b7a!important;border-right:0!important;border-radius:6px 0 0 6px!important}
-.block .seat.group-middle,.block .seat.group-end{margin-right:calc(-1 * var(--gap))}
-`;
-document.head.appendChild(style);
-function mark(){
- document.querySelectorAll('.seat.taken').forEach(el=>{
-   el.classList.remove('group-single','group-start','group-middle','group-end');
-   const g=el.dataset.group;if(!g)return;
-   const prev=el.previousElementSibling,next=el.nextElementSibling;
-   const samePrev=prev?.classList?.contains('seat')&&prev.dataset.group===g;
-   const sameNext=next?.classList?.contains('seat')&&next.dataset.group===g;
-   if(!samePrev&&!sameNext)el.classList.add('group-single');
-   else if(!samePrev&&sameNext)el.classList.add('group-start');
-   else if(samePrev&&sameNext)el.classList.add('group-middle');
-   else el.classList.add('group-end');
- });
+let observer;
+function drawGroups(){
+  if(observer)observer.disconnect();
+  document.querySelectorAll('.groupOverlay').forEach(x=>x.remove());
+  document.querySelectorAll('.rowseats').forEach(row=>{
+    const groups=new Map();
+    row.querySelectorAll('.seat.taken[data-group]').forEach(el=>{
+      const g=el.dataset.group;if(!g)return;
+      if(!groups.has(g))groups.set(g,[]);
+      groups.get(g).push(el);
+    });
+    groups.forEach((els,g)=>{
+      if(!els.length)return;
+      const left=Math.min(...els.map(e=>e.offsetLeft));
+      const right=Math.max(...els.map(e=>e.offsetLeft+e.offsetWidth));
+      const label=els.map(e=>e.querySelector('.gname')?.textContent||'').find(Boolean)||'';
+      const overlay=document.createElement('div');
+      overlay.className='groupOverlay'+(els.some(e=>e.classList.contains('selected'))?' selected':'');
+      overlay.dataset.group=g;
+      overlay.style.left=left+'px';
+      overlay.style.width=(right-left)+'px';
+      overlay.textContent=label;
+      overlay.title=label;
+      row.appendChild(overlay);
+    });
+  });
+  observe();
 }
-new MutationObserver(()=>requestAnimationFrame(mark)).observe(document.body,{childList:true,subtree:true});
-window.addEventListener('load',mark);setTimeout(mark,100);
+function observe(){
+  if(!observer)observer=new MutationObserver(()=>requestAnimationFrame(drawGroups));
+  ['menMap','womenMap'].forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el,{childList:true,subtree:true})});
+}
+window.addEventListener('resize',()=>requestAnimationFrame(drawGroups));
+window.addEventListener('load',()=>setTimeout(drawGroups,50));
+setTimeout(drawGroups,150);
 })();
