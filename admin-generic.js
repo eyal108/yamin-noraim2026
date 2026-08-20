@@ -1,6 +1,6 @@
 (()=>{
 const {SITE,makeClient,isAdmin,norm,esc}=YNGeneric,db=makeClient(),$=id=>document.getElementById(id);
-let session=null,lists=[],currentList=null,rows=[];
+let session=null,lists=[],layouts=[],currentList=null,rows=[];
 const sum=k=>rows.reduce((a,r)=>a+(Number(r[k])||0),0);
 function setStatus(t){$('statusEl').textContent=t||''}
 function current(){return lists.find(x=>x.id===currentList)||null}
@@ -10,13 +10,16 @@ async function gate(){
  if(!(await isAdmin(db,session))){$('loginText').textContent='החשבון '+(session.user.email||'')+' אינו מוגדר כמנהל.';$('adminLogin').classList.add('hidden');$('adminApp').classList.add('hidden');return false}
  $('loginGate').classList.add('hidden');$('adminApp').classList.remove('hidden');$('adminAuth').textContent='מחובר: '+(session.user.email||'');return true
 }
+async function loadLayouts(){const {data,error}=await db.from('yamim_noraim_layouts').select('id,title,is_active,sort_order,created_at').eq('is_active',true).order('sort_order').order('created_at');if(error)throw error;layouts=data||[]}
 async function loadLists(prefer=null){
- const {data,error}=await db.from('yamim_noraim_request_lists').select('id,code,title,sort_order,is_active,registration_open,created_at').order('sort_order').order('created_at');
+ const {data,error}=await db.from('yamim_noraim_request_lists').select('id,code,title,sort_order,is_active,registration_open,default_layout_id,created_at').order('sort_order').order('created_at');
  if(error)throw error;lists=data||[];
  const wanted=prefer||currentList||localStorage.getItem('yn:list');currentList=lists.some(x=>x.id===wanted)?wanted:(lists[0]?.id||null);
  const sel=$('requestListSelect');sel.innerHTML=lists.map(l=>`<option value="${l.id}">${esc(l.title)}${l.is_active?'':' — בארכיון'}</option>`).join('');if(currentList)sel.value=currentList;updateListButtons();
 }
-function updateListButtons(){const l=current();$('toggleRegistrationBtn').textContent=l?.registration_open?'סגור רישום ציבורי':'פתח רישום ציבורי';$('toggleActiveBtn').textContent=l?.is_active?'העבר לארכיון':'החזר לפעילות';$('renameListBtn').disabled=!l;$('toggleRegistrationBtn').disabled=!l;$('toggleActiveBtn').disabled=!l}
+function updateDefaultLayout(){const s=$('defaultLayoutSelect'),l=current();s.innerHTML=layouts.map(x=>`<option value="${x.id}">${esc(x.title)}</option>`).join('');s.disabled=!l||!layouts.length;if(!l||!layouts.length)return;const v=layouts.some(x=>x.id===l.default_layout_id)?l.default_layout_id:layouts[0].id;s.value=v}
+function updateListButtons(){const l=current();$('toggleRegistrationBtn').textContent=l?.registration_open?'סגור רישום ציבורי':'פתח רישום ציבורי';$('toggleActiveBtn').textContent=l?.is_active?'העבר לארכיון':'החזר לפעילות';$('renameListBtn').disabled=!l;$('toggleRegistrationBtn').disabled=!l;$('toggleActiveBtn').disabled=!l;updateDefaultLayout()}
+async function setDefaultLayout(id){const l=current();if(!l||!id)return;const {error}=await db.from('yamim_noraim_request_lists').update({default_layout_id:id,updated_at:new Date().toISOString()}).eq('id',l.id);if(error)return alert('לא ניתן לשמור תצורת ברירת מחדל: '+error.message);l.default_layout_id=id;setStatus('תצורת ברירת המחדל נשמרה')}
 async function loadRows(){
  if(!currentList){rows=[];renderRows();return}
  setStatus('טוען...');
@@ -55,7 +58,7 @@ async function addFamily(){
 }
 async function newList(){
  const title=prompt('כותרת הרשימה החדשה:');if(!title?.trim())return;const code='list-'+Date.now().toString(36);
- const max=lists.reduce((m,x)=>Math.max(m,Number(x.sort_order)||0),0)+10;const {data,error}=await db.from('yamim_noraim_request_lists').insert({code,title:title.trim(),sort_order:max,is_active:true,registration_open:true}).select('id').single();if(error)return alert('לא ניתן ליצור רשימה: '+error.message);await loadLists(data.id);await loadRows();
+ const max=lists.reduce((m,x)=>Math.max(m,Number(x.sort_order)||0),0)+10;const {data,error}=await db.from('yamim_noraim_request_lists').insert({code,title:title.trim(),sort_order:max,is_active:true,registration_open:true,default_layout_id:layouts[0]?.id||null}).select('id').single();if(error)return alert('לא ניתן ליצור רשימה: '+error.message);await loadLists(data.id);await loadRows();
 }
 async function renameList(){const l=current();if(!l)return;const title=prompt('שם חדש לרשימה:',l.title);if(!title?.trim()||title.trim()===l.title)return;const {error}=await db.from('yamim_noraim_request_lists').update({title:title.trim(),updated_at:new Date().toISOString()}).eq('id',l.id);if(error)return alert(error.message);await loadLists(l.id)}
 async function toggleListField(field){const l=current();if(!l)return;const {error}=await db.from('yamim_noraim_request_lists').update({[field]:!l[field],updated_at:new Date().toISOString()}).eq('id',l.id);if(error)return alert(error.message);await loadLists(l.id)}
@@ -65,7 +68,7 @@ function exportCsv(){
 async function loadAdmins(){const {data,error}=await db.from('yamim_noraim_admins').select('email,created_at').order('email');if(error){$('adminsList').innerHTML='<div class="authNote">לא ניתן לטעון מנהלים.</div>';return}$('adminsList').innerHTML=(data||[]).map(a=>`<div class="adminRow"><div><div class="adminEmail">${esc(a.email)}</div>${a.email.toLowerCase()===String(session?.user?.email||'').toLowerCase()?'<div class="authNote">זה החשבון שלך</div>':''}</div><button class="btn danger" data-email="${esc(a.email)}">הסר</button></div>`).join('');$('adminsList').querySelectorAll('[data-email]').forEach(b=>b.onclick=()=>removeAdmin(b.dataset.email))}
 async function addAdmin(){const e=$('adminEmail'),email=e.value.trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert('יש להזין כתובת אימייל תקינה.');const {error}=await db.from('yamim_noraim_admins').insert({email});if(error)return alert(error.code==='23505'?'הכתובת כבר מוגדרת כמנהל.':error.message);e.value='';loadAdmins()}
 async function removeAdmin(email){if(!confirm('להסיר את '+email+' מרשימת המנהלים?'))return;const {error}=await db.from('yamim_noraim_admins').delete().eq('email',email);if(error)return alert(error.message);loadAdmins()}
-async function refresh(){try{await loadLists();await loadRows();await loadAdmins()}catch(e){setStatus('שגיאה: '+e.message)}}
-$('adminLogin').onclick=()=>db.auth.signInWithOAuth({provider:'google',options:{redirectTo:SITE+'admin.html'}});$('logoutBtn').onclick=async()=>{await db.auth.signOut();location.reload()};$('refreshBtn').onclick=refresh;$('exportBtn').onclick=exportCsv;$('addFamilyBtn').onclick=addFamily;$('newListBtn').onclick=newList;$('renameListBtn').onclick=renameList;$('toggleRegistrationBtn').onclick=()=>toggleListField('registration_open');$('toggleActiveBtn').onclick=()=>toggleListField('is_active');$('requestListSelect').onchange=async e=>{currentList=e.target.value;localStorage.setItem('yn:list',currentList);updateListButtons();await loadRows()};$('addAdminBtn').onclick=addAdmin;$('adminEmail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addAdmin()}});
+async function refresh(){try{await loadLayouts();await loadLists();await loadRows();await loadAdmins()}catch(e){setStatus('שגיאה: '+e.message)}}
+$('adminLogin').onclick=()=>db.auth.signInWithOAuth({provider:'google',options:{redirectTo:SITE+'admin.html'}});$('logoutBtn').onclick=async()=>{await db.auth.signOut();location.reload()};$('refreshBtn').onclick=refresh;$('exportBtn').onclick=exportCsv;$('addFamilyBtn').onclick=addFamily;$('newListBtn').onclick=newList;$('renameListBtn').onclick=renameList;$('toggleRegistrationBtn').onclick=()=>toggleListField('registration_open');$('toggleActiveBtn').onclick=()=>toggleListField('is_active');$('requestListSelect').onchange=async e=>{currentList=e.target.value;localStorage.setItem('yn:list',currentList);updateListButtons();await loadRows()};$('defaultLayoutSelect').onchange=e=>setDefaultLayout(e.target.value);$('addAdminBtn').onclick=addAdmin;$('adminEmail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addAdmin()}});
 (async()=>{if(await gate())await refresh()})();
 })();
