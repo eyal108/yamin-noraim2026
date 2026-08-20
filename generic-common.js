@@ -2,7 +2,7 @@
 const SUPA='https://fhilbjbuhtqdwvxhiedz.supabase.co';
 const KEY='sb_publishable_sXoO_u65OB-SPt9OFPiz5A_XMUIIprl';
 const SITE='https://eyal108.github.io/yamin-noraim2026/';
-const TENANT_TABLES=new Set(['yamim_noraim_request_lists','yamim_noraim_layouts','yamim_noraim_families','yamim_noraim_requests','yamim_noraim_seating_v2','yamim_noraim_automatic_proposals','yamim_noraim_synagogue_admins']);
+const TENANT_TABLES=new Set(['yamim_noraim_request_lists','yamim_noraim_layouts','yamim_noraim_families','yamim_noraim_requests','yamim_noraim_seating_v2','yamim_noraim_automatic_proposals','yamim_noraim_synagogue_admins','yamim_noraim_reference_charts']);
 const ZERO='00000000-0000-0000-0000-000000000000';
 let access=null,baseClient=null,wrappedClient=null;
 function rawClient(){if(!baseClient)baseClient=supabase.createClient(SUPA,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});return baseClient}
