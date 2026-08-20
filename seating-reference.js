@@ -23,7 +23,7 @@ function mount(){
  const engine=card.querySelector('.engineOption');if(engine)engine.before(box);else card.appendChild(box);
  $('referenceSelect').onchange=e=>{selectedId=e.target.value||null;viewing=false;clearReferenceMarks();renderControl()};
  $('referenceSaveBtn').onclick=saveCurrentAsReference;$('referenceActivateBtn').onclick=activateSelected;$('referenceDeleteBtn').onclick=deleteSelected;$('referenceShowBtn').onclick=toggleShow;
- renderControl();ensureLoaded().catch(e=>{const s=$('referenceState');if(s)s.textContent='שגיאה בטעינת תרשימי הייחוס: '+e.message});
+ renderControl();
 }
 function renderControl(){
  if(!mounted)return;const sel=$('referenceSelect'),state=$('referenceState'),act=$('referenceActivateBtn'),del=$('referenceDeleteBtn'),show=$('referenceShowBtn');if(!sel||!state)return;
@@ -68,7 +68,7 @@ function applyReferenceMarks(){clearReferenceMarks();const c=charts.find(x=>x.id
  if(!any){viewing=false;renderControl();alert('אין מספיק מידע גאומטרי כדי להציג את תרשים הייחוס על התצורה הנוכחית. הוא עדיין יכול לשמש כהעדפה בשיבוץ האוטומטי.');}
 }
 function toggleShow(){if(!selectedId)return;viewing=!viewing;if(viewing)applyReferenceMarks();else clearReferenceMarks();renderControl()}
-window.addEventListener('yn:seating-rendered',()=>{mount();if(!loaded)ensureLoaded().catch(()=>{});if(viewing)setTimeout(applyReferenceMarks,0)});
+window.addEventListener('yn:seating-rendered',()=>{mount();if(!loaded)ensureLoaded().catch(e=>{const s=$('referenceState');if(s)s.textContent='שגיאה בטעינת תרשימי הייחוס: '+e.message});if(viewing)setTimeout(applyReferenceMarks,0)});
 ['requestListSelect','layoutSelect'].forEach(id=>$(id)?.addEventListener('change',()=>{viewing=false;clearReferenceMarks();renderControl()},{capture:true}));
 window.YNReference={ensureLoaded,getActive:()=>active,getActiveMeta:activeMeta,forFamily:familyReference,refresh:async()=>{loaded=false;return ensureLoaded()}};
 mount();
