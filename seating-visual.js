@@ -9,9 +9,9 @@ function drawGroups(){
   row.querySelectorAll('.seat.taken[data-group]').forEach(el=>{const g=el.dataset.group;if(!g)return;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(el)});
   groups.forEach((els,g)=>{
    if(!els.length)return;
-   const left=Math.min(...els.map(e=>e.offsetLeft)),right=Math.max(...els.map(e=>e.offsetLeft+e.offsetWidth));
+   const left=Math.min(...els.map(e=>e.offsetLeft)),right=Math.max(...els.map(e=>e.offsetLeft+e.offsetWidth)),proposal=els.some(e=>e.classList.contains('draftProposal'));
    const label=els.map(e=>e.querySelector('.gname')?.textContent||'').find(Boolean)||'';
-   const o=document.createElement('div');o.className='groupOverlay'+(els.some(e=>e.classList.contains('selected'))?' selected':'');o.dataset.group=g;o.style.left=left+'px';o.style.width=Math.max(1,right-left)+'px';o.textContent=label;o.title=label;row.appendChild(o);
+   const o=document.createElement('div');o.className='groupOverlay'+(proposal?' proposal':'')+(els.some(e=>e.classList.contains('selected'))?' selected':'');o.dataset.group=g;o.style.left=left+'px';o.style.width=Math.max(1,right-left)+'px';o.textContent=label;o.title=label+(proposal?' — הצעה אוטומטית בטיוטה':'');row.appendChild(o);
   });
  });
 }
@@ -31,5 +31,5 @@ function stageGroups(map){
 }
 function drawAll(){if(drawing)return;drawing=true;if(observer)observer.disconnect();try{drawGroups();['womenMap','menMap'].forEach(id=>{const m=document.getElementById(id);if(m)stageGroups(m)})}finally{drawing=false;observe()}}
 function observe(){if(!observer)observer=new MutationObserver(schedule);['womenMap','menMap'].forEach(id=>{const el=document.getElementById(id);if(el)observer.observe(el,{childList:true,subtree:true})})}
-window.addEventListener('resize',schedule);window.addEventListener('load',()=>setTimeout(schedule,80));observe();setTimeout(schedule,120);
+window.addEventListener('yn:seating-rendered',schedule);window.addEventListener('resize',schedule);window.addEventListener('load',()=>setTimeout(schedule,80));observe();setTimeout(schedule,120);
 })();
