@@ -1,32 +1,74 @@
 (()=>{
-const {SITE,makeClient,isAdmin,uid,esc}=YNGeneric,{normalizeDefinition,seatIds}=YNLayout,db=makeClient(),$=id=>document.getElementById(id);
-let session=null,layouts=[],layoutId=null,definition=null,dirty=false;
+const {SITE,makeClient,isAdmin,esc}=YNGeneric,{normalizeDefinition,toGridDefinition,seatIds}=YNLayout,db=makeClient(),$=id=>document.getElementById(id);
+let session=null,layouts=[],layoutId=null,definition=null,dirty=false,activeTool='seat',painting=false,lastPaintKey='';
+const toolLabels={seat:'מושב',aisle:'מעבר',stage:'במה',spacer:'רווח'};
 function status(t){$('status').textContent=t||''}
 function current(){return layouts.find(x=>x.id===layoutId)||null}
-function newId(prefix){return uid(prefix).replace(/[^a-zA-Z0-9_-]/g,'').slice(0,18)}
-function blankDefinition(){return normalizeDefinition({version:1,front:{left:'חזית / ספרים',center:'ארון קודש',right:'כניסה'},sections:{women:{title:'נשים',rows:[]},men:{title:'גברים',rows:[]}}})}
-function newCell(type){const id=newId(type[0]);if(type==='seats')return{id,type,count:4};if(type==='stage')return{id,type,width:3,label:'במה'};return{id,type,width:1}}
-function newRow(sec){const n=definition.sections[sec].rows.length+1;return{id:newId('r'),label:String(n),cells:[newCell('seats'),newCell('aisle'),newCell('seats')]}}
-function cloneCell(c){const x={...c,id:newId(c.type?.[0]||'c')};if(c.type==='seats')x.count=Number(c.count)||1;else x.width=Number(c.width)||1;return x}
-function cloneRowBelow(sec,ri){const rows=definition.sections[sec].rows,src=rows[ri];if(!src)return;const copy={...src,id:newId('r'),cells:(src.cells||[]).map(cloneCell)};rows.splice(ri+1,0,copy);if(!definition.legacy_no&&rows.every(r=>/^\d+$/.test(String(r.label))))rows.forEach((r,i)=>r.label=String(i+1));else copy.label=String(rows.length);dirty=true;renderAll()}
+function makeGrid(rows=8,cols=12){return{rows,cols,cells:Array.from({length:rows},()=>Array.from({length:cols},()=>({type:'seat'})))}}
+function blankDefinition(){return normalizeDefinition({version:2,front:{left:'חזית / ספרים',center:'ארון קודש',right:'כניסה'},sections:{women:{title:'נשים',grid:makeGrid()},men:{title:'גברים',grid:makeGrid()}}})}
+function compactDefinition(){
+ const d=normalizeDefinition(definition),out={version:2,front:d.front||{},sections:{}};
+ if(d.legacy_no)out.legacy_no=d.legacy_no;
+ for(const sec of ['women','men'])out.sections[sec]={title:d.sections[sec].title,grid:d.sections[sec].grid};
+ return out;
+}
+function clearSeatIds(d){for(const sec of ['women','men'])for(const row of d.sections[sec].grid.cells)for(const c of row){delete c.seat_id;delete c.seat_id_backup}delete d.legacy_no;return d}
 async function gate(){const r=await db.auth.getSession();session=r.data.session;if(!session?.user||!(await isAdmin(db,session))){$('loginGate').innerHTML='יש להתחבר כמנהל כדי לערוך תצורות. <button id="loginBtn" class="btn primary">התחבר עם Google</button>';$('loginBtn').onclick=()=>db.auth.signInWithOAuth({provider:'google',options:{redirectTo:SITE+'layouts.html'}});return false}$('loginGate').classList.add('hidden');$('app').classList.remove('hidden');return true}
 async function loadLayouts(prefer=null){const {data,error}=await db.from('yamim_noraim_layouts').select('id,code,title,definition,sort_order,is_active,updated_at').order('sort_order').order('created_at');if(error)throw error;layouts=data||[];layoutId=prefer||layoutId||localStorage.getItem('yn:layout')||layouts[0]?.id||null;if(!layouts.some(x=>x.id===layoutId))layoutId=layouts[0]?.id||null;renderSelect();loadCurrent()}
 function renderSelect(){const sel=$('layoutSelect');sel.innerHTML=layouts.map(l=>`<option value="${l.id}">${esc(l.title)}${l.is_active?'':' — בארכיון'}</option>`).join('');if(layoutId)sel.value=layoutId}
-function loadCurrent(){const l=current();if(!l){definition=blankDefinition();$('layoutTitle').value='';renderAll();return}definition=normalizeDefinition(l.definition);$('layoutTitle').value=l.title;$('frontLeft').value=definition.front?.left||'';$('frontCenter').value=definition.front?.center||'';$('frontRight').value=definition.front?.right||'';$('toggleActiveBtn').textContent=l.is_active?'העבר לארכיון':'החזר לפעילות';dirty=false;renderAll()}
-function mark(){dirty=true;readMeta();renderPreview()}
-function readMeta(){definition.front={left:$('frontLeft').value,center:$('frontCenter').value,right:$('frontRight').value}}
-function renderRows(sec){const box=$(sec+'Rows'),rows=definition.sections[sec].rows;if(!rows.length){box.innerHTML='<div class="emptyRows"><button class="btn" data-first-row>הוסף שורה ראשונה</button></div>';box.querySelector('[data-first-row]').onclick=()=>{rows.push(newRow(sec));dirty=true;renderAll()};return}box.innerHTML=rows.map((r,ri)=>`<div class="editRow" data-sec="${sec}" data-row="${ri}"><div class="rowTools"><b>שורה</b><input value="${esc(r.label)}" data-row-label><button class="btn mini" data-row-up title="הזז שורה למעלה">↑</button><button class="btn mini" data-row-down title="הזז שורה למטה">↓</button><button class="btn mini" data-row-add-below>+ שורה זהה מתחת</button><button class="btn mini danger" data-row-del>מחק שורה</button></div><div class="cells">${r.cells.map((c,ci)=>cellHtml(c,ci)).join('')}</div><div class="addCells"><button class="btn mini" data-add-cell="seats">+ מושבים</button><button class="btn mini" data-add-cell="aisle">+ מעבר</button><button class="btn mini" data-add-cell="stage">+ במה</button><button class="btn mini" data-add-cell="spacer">+ רווח</button></div></div>`).join('');bindRows(sec)}
-function cellHtml(c,ci){const label=c.type==='seats'?'מושבים':c.type==='aisle'?'מעבר':c.type==='stage'?'במה':'רווח',n=c.type==='seats'?c.count:c.width;return `<div class="cell ${c.type}" data-cell="${ci}"><div class="cellTitle">${label}</div><div>${c.type==='seats'?'כמות':'רוחב'}: <input type="number" min="${c.type==='seats'?1:.25}" max="${c.type==='seats'?100:30}" step="${c.type==='seats'?1:.25}" value="${n}" data-cell-size></div>${c.type==='stage'?`<div>טקסט: <input value="${esc(c.label||'במה')}" data-stage-label></div>`:''}<div class="cellTools"><button class="btn mini" data-cell-left>←</button><button class="btn mini" data-cell-right>→</button><button class="btn mini danger" data-cell-del>×</button></div></div>`}
-function bindRows(sec){const rows=definition.sections[sec].rows;$(sec+'Rows').querySelectorAll('.editRow').forEach(el=>{const ri=+el.dataset.row,r=rows[ri];el.querySelector('[data-row-label]').oninput=e=>{r.label=e.target.value;mark()};el.querySelector('[data-row-up]').onclick=()=>moveRow(sec,ri,-1);el.querySelector('[data-row-down]').onclick=()=>moveRow(sec,ri,1);el.querySelector('[data-row-add-below]').onclick=()=>cloneRowBelow(sec,ri);el.querySelector('[data-row-del]').onclick=()=>{if(confirm('למחוק את השורה?')){rows.splice(ri,1);dirty=true;renderAll()}};el.querySelectorAll('.cell').forEach(cel=>{const ci=+cel.dataset.cell,c=r.cells[ci];cel.querySelector('[data-cell-size]').oninput=e=>{const x=Number(e.target.value);if(c.type==='seats')c.count=Math.max(1,Math.round(x||1));else c.width=Math.max(.25,x||1);mark()};const sl=cel.querySelector('[data-stage-label]');if(sl)sl.oninput=e=>{c.label=e.target.value;mark()};cel.querySelector('[data-cell-left]').onclick=()=>moveCell(r,ci,-1,sec);cel.querySelector('[data-cell-right]').onclick=()=>moveCell(r,ci,1,sec);cel.querySelector('[data-cell-del]').onclick=()=>{r.cells.splice(ci,1);dirty=true;renderAll()}});el.querySelectorAll('[data-add-cell]').forEach(b=>b.onclick=()=>{r.cells.push(newCell(b.dataset.addCell));dirty=true;renderAll()})})}
-function moveRow(sec,i,d){const a=definition.sections[sec].rows,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];dirty=true;renderAll()}
-function moveCell(r,i,d,sec){const j=i+d;if(j<0||j>=r.cells.length)return;[r.cells[i],r.cells[j]]=[r.cells[j],r.cells[i]];dirty=true;renderAll()}
-function renderPreview(){readMeta();const front=definition.front||{},html=['<div class="frontPreview">'+[front.left,front.center,front.right].filter(Boolean).map(esc).join(' · ')+'</div><div class="previewGrid">'];for(const sec of ['women','men']){html.push(`<div class="previewSection"><h3>${sec==='women'?'נשים':'גברים'}</h3>`);for(const r of definition.sections[sec].rows){html.push(`<div class="previewRow"><span class="previewLabel">${esc(r.label)}</span><div class="previewCells">`);for(const c of r.cells){if(c.type==='seats')html.push(`<div class="pvSeats">${Array.from({length:Math.min(40,c.count)},()=>'<span class="pvSeat"></span>').join('')}</div>`);else if(c.type==='stage')html.push(`<div class="pvStage" style="width:calc(var(--seat) * ${c.width})">${esc(c.label||'במה')}</div>`);else html.push(`<div class="${c.type==='aisle'?'pvAisle':'pvSpacer'}" style="width:calc(var(--seat) * ${c.width})"></div>`)}html.push('</div></div>')}html.push('</div>')}html.push('</div>');$('preview').innerHTML=html.join('')}
-function renderAll(){renderRows('women');renderRows('men');renderPreview()}
-async function save(){const l=current();if(!l)return;readMeta();definition=normalizeDefinition(definition);const title=$('layoutTitle').value.trim();if(!title)return alert('יש להזין שם לתצורה.');for(const sec of ['women','men']){if(!definition.sections[sec].rows.length)return alert('יש להגדיר לפחות שורה אחת לכל צד.');for(const r of definition.sections[sec].rows)if(!r.cells.some(c=>c.type==='seats'))return alert(`בשורה ${r.label} בצד ${sec==='men'?'גברים':'נשים'} אין מושבים.`)}
- const {data:assigned,error:aerr}=await db.from('yamim_noraim_seating_v2').select('seat_id').eq('layout_id',l.id);if(aerr)return alert(aerr.message);if(assigned?.length){const ids=seatIds({code:l.code,definition}),missing=assigned.filter(a=>!ids.has(a.seat_id));if(missing.length)return alert(`לא ניתן לשמור: ${missing.length} מושבים שכבר שובצו אינם קיימים בתצורה החדשה. יש לשחרר אותם קודם בסידור ההושבה.`);if(!confirm(`לתצורה יש ${assigned.length} מושבים משובצים. השינוי אינו מוחק אותם. לשמור בכל זאת?`))return}
- const {error}=await db.from('yamim_noraim_layouts').update({title,definition,updated_at:new Date().toISOString()}).eq('id',l.id);if(error)return alert('שגיאה בשמירה: '+error.message);status('התצורה נשמרה.');dirty=false;await loadLayouts(l.id)}
-async function createNew(duplicate=false){const base=duplicate&&current()?normalizeDefinition(current().definition):blankDefinition();if(duplicate)delete base.legacy_no;const title=prompt(duplicate?'שם לתצורה המשוכפלת:':'שם התצורה החדשה:',duplicate?(current().title+' - עותק'):'תצורה חדשה');if(!title?.trim())return;const code='layout-'+Date.now().toString(36),max=layouts.reduce((m,x)=>Math.max(m,Number(x.sort_order)||0),0)+10;const {data,error}=await db.from('yamim_noraim_layouts').insert({code,title:title.trim(),definition:base,sort_order:max,is_active:true}).select('id').single();if(error)return alert(error.message);await loadLayouts(data.id)}
+function loadCurrent(){const l=current();if(!l){definition=blankDefinition();$('layoutTitle').value='';renderAll();return}definition=toGridDefinition(l);$('layoutTitle').value=l.title;$('toggleActiveBtn').textContent=l.is_active?'העבר לארכיון':'החזר לפעילות';dirty=false;renderAll();if(Number(l.definition?.version||1)<2)status('התצורה הוותיקה הומרה לגריד לצורך עריכה. השיבוצים הקיימים יישמרו בעת השמירה.');else status('')}
+function grid(sec){return definition.sections[sec].grid}
+function setTool(t){if(!toolLabels[t])return;activeTool=t;document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));$('toolState').textContent=`כלי פעיל: ${toolLabels[t]}`}
+function cellSymbol(type){return type==='seat'?'●':type==='aisle'?'↕':type==='stage'?'במה':'×'}
+function renderSection(sec){
+ const g=grid(sec),host=$(sec+'Grid');$(sec+'Rows').value=g.rows;$(sec+'Cols').value=g.cols;
+ const cols=Array.from({length:g.cols},(_,i)=>`<span class="colLabel">${i+1}</span>`).join('');
+ const rows=g.cells.map((row,r)=>`<div class="gridLine"><span class="rowLabel">${r+1}</span>${row.map((c,i)=>`<button type="button" class="gridCell ${c.type}" data-sec="${sec}" data-r="${r}" data-c="${i}" title="שורה ${r+1}, עמודה ${i+1}: ${toolLabels[c.type]||c.type}">${cellSymbol(c.type)}</button>`).join('')}</div>`).join('');
+ host.innerHTML=`<div class="gridHeader"><span></span>${cols}</div>${rows}`;
+}
+function renderAll(){renderSection('women');renderSection('men');setTool(activeTool)}
+function mark(){dirty=true}
+function paintCell(el){
+ const sec=el.dataset.sec,r=+el.dataset.r,c=+el.dataset.c,key=`${sec}:${r}:${c}:${activeTool}`;if(lastPaintKey===key)return;lastPaintKey=key;
+ const old=grid(sec).cells[r][c]||{type:'seat'};if(old.type===activeTool)return;
+ let next=activeTool==='seat'?{type:'seat'}:{type:activeTool};
+ const backup=old.type==='seat'?(old.seat_id||old.seat_id_backup):old.seat_id_backup;
+ if(activeTool==='seat'&&backup)next.seat_id=backup;
+ if(activeTool!=='seat'&&backup)next.seat_id_backup=backup;
+ if(activeTool==='stage')next.label='במה';
+ grid(sec).cells[r][c]=next;mark();
+ el.className=`gridCell ${activeTool}`;el.textContent=cellSymbol(activeTool);el.title=`שורה ${r+1}, עמודה ${c+1}: ${toolLabels[activeTool]}`;
+}
+function resizeSection(sec){
+ const g=grid(sec),rows=Math.max(1,Math.min(60,Math.round(Number($(sec+'Rows').value)||g.rows||1))),cols=Math.max(1,Math.min(60,Math.round(Number($(sec+'Cols').value)||g.cols||1)));
+ if(rows===g.rows&&cols===g.cols)return;
+ if((rows<g.rows||cols<g.cols)&&!confirm('הקטנת הגריד עשויה להסיר תאים מהקצה. אם מושבים שהוסרו משובצים, השמירה תיחסם. להמשיך?')){$(sec+'Rows').value=g.rows;$(sec+'Cols').value=g.cols;return}
+ const cells=[];for(let r=0;r<rows;r++){const line=[];for(let c=0;c<cols;c++)line.push(g.cells?.[r]?.[c]?{...g.cells[r][c]}:{type:'seat'});cells.push(line)}
+ definition.sections[sec].grid={rows,cols,cells};mark();renderSection(sec);
+}
+function bindPainter(){
+ document.addEventListener('pointerdown',e=>{const cell=e.target.closest?.('.gridCell');if(!cell)return;painting=true;lastPaintKey='';e.preventDefault();paintCell(cell)});
+ document.addEventListener('pointerover',e=>{if(!painting)return;const cell=e.target.closest?.('.gridCell');if(cell)paintCell(cell)});
+ document.addEventListener('pointermove',e=>{if(!painting)return;const cell=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.gridCell');if(cell)paintCell(cell)},{passive:false});
+ window.addEventListener('pointerup',()=>{painting=false;lastPaintKey=''});window.addEventListener('pointercancel',()=>{painting=false;lastPaintKey=''})
+}
+async function save(){
+ const l=current();if(!l)return;definition=normalizeDefinition(definition);const title=$('layoutTitle').value.trim();if(!title)return alert('יש להזין שם לתצורה.');
+ for(const sec of ['women','men']){const g=grid(sec);if(!g.rows||!g.cols)return alert('יש להגדיר לפחות שורה ועמודה אחת לכל צד.');if(!g.cells.some(row=>row.some(c=>c.type==='seat')))return alert(`בצד ${sec==='men'?'גברים':'נשים'} אין אף מושב.`)}
+ const stored=compactDefinition(),{data:assigned,error:aerr}=await db.from('yamim_noraim_seating_v2').select('seat_id').eq('layout_id',l.id);if(aerr)return alert(aerr.message);
+ if(assigned?.length){const ids=seatIds({code:l.code,definition:stored}),missing=assigned.filter(a=>!ids.has(a.seat_id));if(missing.length)return alert(`לא ניתן לשמור: ${missing.length} מושבים שכבר שובצו אינם קיימים עוד בגריד. החזר אותם ל"מושב" או שחרר אותם קודם בסידור ההושבה.`)}
+ const {error}=await db.from('yamim_noraim_layouts').update({title,definition:stored,updated_at:new Date().toISOString()}).eq('id',l.id);if(error)return alert('שגיאה בשמירה: '+error.message);status('התצורה נשמרה.');dirty=false;await loadLayouts(l.id)
+}
+async function createNew(duplicate=false){
+ const base=duplicate&&current()?clearSeatIds(toGridDefinition(current())):blankDefinition(),title=prompt(duplicate?'שם לתצורה המשוכפלת:':'שם התצורה החדשה:',duplicate?(current().title+' - עותק'):'תצורה חדשה');if(!title?.trim())return;
+ const code='layout-'+Date.now().toString(36),max=layouts.reduce((m,x)=>Math.max(m,Number(x.sort_order)||0),0)+10,d=normalizeDefinition(base),stored={version:2,front:d.front||{},sections:{}};for(const sec of ['women','men'])stored.sections[sec]={title:d.sections[sec].title,grid:d.sections[sec].grid};
+ const {data,error}=await db.from('yamim_noraim_layouts').insert({code,title:title.trim(),definition:stored,sort_order:max,is_active:true}).select('id').single();if(error)return alert(error.message);await loadLayouts(data.id)
+}
 async function toggleActive(){const l=current();if(!l)return;const {error}=await db.from('yamim_noraim_layouts').update({is_active:!l.is_active,updated_at:new Date().toISOString()}).eq('id',l.id);if(error)return alert(error.message);await loadLayouts(l.id)}
-$('layoutSelect').onchange=e=>{if(dirty&&!confirm('יש שינויים שלא נשמרו. לעבור לתצורה אחרת?')){e.target.value=layoutId;return}layoutId=e.target.value;localStorage.setItem('yn:layout',layoutId);loadCurrent()};$('layoutTitle').oninput=()=>dirty=true;['frontLeft','frontCenter','frontRight'].forEach(id=>$(id).oninput=mark);$('saveBtn').onclick=save;$('newBtn').onclick=()=>createNew(false);$('duplicateBtn').onclick=()=>createNew(true);$('toggleActiveBtn').onclick=toggleActive;
+$('layoutSelect').onchange=e=>{if(dirty&&!confirm('יש שינויים שלא נשמרו. לעבור לתצורה אחרת?')){e.target.value=layoutId;return}layoutId=e.target.value;localStorage.setItem('yn:layout',layoutId);loadCurrent()};
+$('layoutTitle').oninput=()=>dirty=true;document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+for(const sec of ['women','men']){$(sec+'Resize').onclick=()=>resizeSection(sec);[$(sec+'Rows'),$(sec+'Cols')].forEach(x=>x.addEventListener('keydown',e=>{if(e.key==='Enter')resizeSection(sec)}))}
+$('saveBtn').onclick=save;$('newBtn').onclick=()=>createNew(false);$('duplicateBtn').onclick=()=>createNew(true);$('toggleActiveBtn').onclick=toggleActive;
+window.addEventListener('beforeunload',e=>{if(!dirty)return;e.preventDefault();e.returnValue=''});bindPainter();
 (async()=>{if(await gate())try{await loadLayouts()}catch(e){status('שגיאה: '+e.message)}})();
 })();
