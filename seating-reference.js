@@ -9,7 +9,7 @@ function familyReference(familyId,familyName,section){
  const fs=active?.snapshot?.families;if(!Array.isArray(fs))return[];
  const f=fs.find(x=>x.family_id===familyId)||fs.find(x=>norm(x.family_name)===norm(familyName));
  const refs=Array.isArray(f?.reference)?f.reference:[];
- return refs.filter(x=>!x?.section||x.section===section);
+ return refs.filter(x=>!x?.section||x.section===section).map(x=>{const y={...(x||{})};delete y.seat_ids;return y});
 }
 function activeMeta(){return active?{id:active.id,name:active.name,source_request_list_id:active.source_request_list_id,source_layout_id:active.source_layout_id,created_at:active.created_at}:null}
 async function loadCharts(){
@@ -70,6 +70,6 @@ function applyReferenceMarks(){clearReferenceMarks();const c=charts.find(x=>x.id
 function toggleShow(){if(!selectedId)return;viewing=!viewing;if(viewing)applyReferenceMarks();else clearReferenceMarks();renderControl()}
 window.addEventListener('yn:seating-rendered',()=>{mount();if(!loaded)ensureLoaded().catch(e=>{const s=$('referenceState');if(s)s.textContent='שגיאה בטעינת תרשימי הייחוס: '+e.message});if(viewing)setTimeout(applyReferenceMarks,0)});
 ['requestListSelect','layoutSelect'].forEach(id=>$(id)?.addEventListener('change',()=>{viewing=false;clearReferenceMarks();renderControl()},{capture:true}));
-window.YNReference={ensureLoaded,getActive:()=>active,getActiveMeta:activeMeta,forFamily:familyReference,refresh:async()=>{loaded=false;return ensureLoaded()}};
+window.YNReference={ensureLoaded,getActive:()=>active,hasActive:()=>!!active,getActiveMeta:activeMeta,forFamily:familyReference,refresh:async()=>{loaded=false;return ensureLoaded()}};
 mount();
 })();
