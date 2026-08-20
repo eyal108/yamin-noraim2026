@@ -16,7 +16,7 @@ async function renameLayout(){
 function init(){
  const toolbar=document.querySelector('.toolbar'),dup=$('duplicateBtn');if(!toolbar||$('renameBtn'))return;
  const b=document.createElement('button');b.className='btn';b.id='renameBtn';b.type='button';b.textContent='שנה שם';b.onclick=renameLayout;
- dup?.after(b)||toolbar.appendChild(b);
+ if(dup)dup.after(b);else toolbar.appendChild(b);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
