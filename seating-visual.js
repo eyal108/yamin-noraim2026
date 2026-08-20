@@ -2,16 +2,26 @@
 if(!window.YN)return;
 let observer=null,drawing=false,raf=0;
 function schedule(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;drawAll()})}
-function drawGroups(){document.querySelectorAll('.groupOverlay').forEach(x=>x.remove());document.querySelectorAll('.rowseats').forEach(row=>{const groups=new Map();row.querySelectorAll('.seat.taken[data-group]').forEach(el=>{const g=el.dataset.group;if(!g)return;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(el)});groups.forEach((els,g)=>{if(!els.length)return;const left=Math.min(...els.map(e=>e.offsetLeft)),right=Math.max(...els.map(e=>e.offsetLeft+e.offsetWidth)),proposal=els.some(e=>e.classList.contains('draftProposal')),label=els.map(e=>e.querySelector('.gname')?.textContent||'').find(Boolean)||'',o=document.createElement('div');o.className='groupOverlay'+(proposal?' proposal':'')+(els.some(e=>e.classList.contains('selected'))?' selected':'');o.dataset.group=g;o.style.left=left+'px';o.style.width=Math.max(1,right-left)+'px';o.textContent=label;o.title=label+(proposal?' — הצעה אוטומטית בטיוטה':'');row.appendChild(o)})})}
+function drawGroups(){
+ document.querySelectorAll('.groupOverlay').forEach(x=>x.remove());
+ document.querySelectorAll('.rowseats').forEach(row=>{
+  const groups=new Map();
+  row.querySelectorAll('.seat.taken[data-group]').forEach(el=>{const g=el.dataset.group;if(!g)return;if(!groups.has(g))groups.set(g,[]);groups.get(g).push(el)});
+  groups.forEach((els,g)=>{if(!els.length)return;const left=Math.min(...els.map(e=>e.offsetLeft)),right=Math.max(...els.map(e=>e.offsetLeft+e.offsetWidth)),proposal=els.some(e=>e.classList.contains('draftProposal')),label=els.map(e=>e.querySelector('.gname')?.textContent||'').find(Boolean)||'',o=document.createElement('div');o.className='groupOverlay'+(proposal?' proposal':'')+(els.some(e=>e.classList.contains('selected'))?' selected':'');o.dataset.group=g;o.style.left=left+'px';o.style.width=Math.max(1,right-left)+'px';o.textContent=label;o.title=label+(proposal?' — הצעה אוטומטית בטיוטה':'');row.appendChild(o)})
+ })
+}
+function gap(a1,a2,b1,b2){return Math.max(0,Math.max(a1,b1)-Math.min(a2,b2))}
+function overlap(a1,a2,b1,b2){return Math.min(a2,b2)-Math.max(a1,b1)}
 function stageGroups(map){
- const rows=[...map.querySelectorAll('.areaRow .rowseats')];
- const cells=[];
- rows.forEach((row,ri)=>[...row.children].forEach((el,ci)=>{if(el.classList.contains('stageCell'))cells.push({el,r:ri,c:ci,label:el.textContent.trim()||'במה'})}));
- cells.forEach(x=>x.el.style.visibility='visible');map.querySelectorAll('.stageMerged').forEach(x=>x.remove());if(cells.length<2)return;
- const byKey=new Map(cells.map(x=>[`${x.r}:${x.c}`,x])),seen=new Set(),m=map.getBoundingClientRect();
- for(const start of cells){const sk=`${start.r}:${start.c}`;if(seen.has(sk))continue;const group=[],queue=[start];seen.add(sk);while(queue.length){const cur=queue.shift();group.push(cur);for(const [dr,dc] of [[1,0],[-1,0],[0,1],[0,-1]]){const k=`${cur.r+dr}:${cur.c+dc}`,n=byKey.get(k);if(n&&!seen.has(k)&&n.label===start.label){seen.add(k);queue.push(n)}}}
-  if(group.length<2)continue;const minR=Math.min(...group.map(x=>x.r)),maxR=Math.max(...group.map(x=>x.r)),minC=Math.min(...group.map(x=>x.c)),maxC=Math.max(...group.map(x=>x.c));let rectangle=true;for(let r=minR;r<=maxR&&rectangle;r++)for(let c=minC;c<=maxC;c++){const x=byKey.get(`${r}:${c}`);if(!x||x.label!==start.label){rectangle=false;break}}
-  if(!rectangle)continue;const rects=group.map(x=>x.el.getBoundingClientRect()),left=Math.min(...rects.map(r=>r.left))-m.left,top=Math.min(...rects.map(r=>r.top))-m.top,right=Math.max(...rects.map(r=>r.right))-m.left,bottom=Math.max(...rects.map(r=>r.bottom))-m.top;group.forEach(x=>x.el.style.visibility='hidden');const box=document.createElement('div');box.className='stageMerged';box.textContent=start.label||'במה';box.style.left=left+'px';box.style.top=top+'px';box.style.width=Math.max(1,right-left)+'px';box.style.height=Math.max(1,bottom-top)+'px';map.appendChild(box)
+ const raw=[...map.querySelectorAll('.stageCell')];raw.forEach(x=>x.style.visibility='visible');map.querySelectorAll('.stageMerged').forEach(x=>x.remove());if(!raw.length)return;
+ const mr=map.getBoundingClientRect(),items=raw.map(el=>{const r=el.getBoundingClientRect();return{el,label:el.textContent.trim()||'במה',left:r.left-mr.left,right:r.right-mr.left,top:r.top-mr.top,bottom:r.bottom-mr.top}}),seen=new Set();
+ const adjacent=(a,b)=>{if(a.label!==b.label)return false;const gx=gap(a.left,a.right,b.left,b.right),gy=gap(a.top,a.bottom,b.top,b.bottom),ox=overlap(a.left,a.right,b.left,b.right),oy=overlap(a.top,a.bottom,b.top,b.bottom);return(oy>4&&gx<=6)||(ox>4&&gy<=8)};
+ for(let i=0;i<items.length;i++){
+  if(seen.has(i))continue;const group=[],queue=[i];seen.add(i);
+  while(queue.length){const idx=queue.shift(),cur=items[idx];group.push(cur);for(let j=0;j<items.length;j++)if(!seen.has(j)&&adjacent(cur,items[j])){seen.add(j);queue.push(j)}}
+  if(group.length===1)continue;
+  const left=Math.min(...group.map(x=>x.left)),right=Math.max(...group.map(x=>x.right)),top=Math.min(...group.map(x=>x.top)),bottom=Math.max(...group.map(x=>x.bottom));group.forEach(x=>x.el.style.visibility='hidden');
+  const box=document.createElement('div');box.className='stageMerged';box.textContent=group[0].label||'במה';box.style.left=left+'px';box.style.top=top+'px';box.style.width=Math.max(1,right-left)+'px';box.style.height=Math.max(1,bottom-top)+'px';map.appendChild(box)
  }
 }
 function drawAll(){if(drawing)return;drawing=true;if(observer)observer.disconnect();try{drawGroups();document.querySelectorAll('.areaMap').forEach(stageGroups)}finally{drawing=false;observe()}}
