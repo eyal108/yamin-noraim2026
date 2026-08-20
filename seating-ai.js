@@ -12,6 +12,9 @@ const YEAR={
 'צחי':[{row:8,zone:'left',side:'right'},{row:8,zone:'center',side:'right'}]
 };
 const countAssigned=(family,section)=>S.assignments.filter(a=>a.family_name===family&&a.section===section).length;
+function fmtUsd(n){if(n==null||!Number.isFinite(Number(n)))return'לא ידוע';const x=Number(n);return'$'+x.toFixed(x<0.01?4:3)}
+function usageText(u){if(!u)return'';let s=`עלות משוערת לקריאה: ${fmtUsd(u.estimated_cost_usd)}`;if(u.cumulative_cost_usd!=null)s+=` · מצטבר: ${fmtUsd(u.cumulative_cost_usd)}`;if(u.calls!=null)s+=` (${u.calls} קריאות)`;return s}
+function showUsage(u){if(!u)return;let el=document.getElementById('aiCostBadge');if(!el){el=document.createElement('span');el.id='aiCostBadge';el.className='aiUsage';const clear=document.getElementById('clearAiBtn');(clear?.parentNode||document.querySelector('.top'))?.insertBefore(el,clear?.nextSibling||null)}el.textContent=usageText(u);el.title=`קלט: ${u.input_tokens||0} טוקנים · פלט: ${u.output_tokens||0} · מטמון: ${u.cached_input_tokens||0} · סה״כ: ${u.total_tokens||0}`}
 function payload(){
  const occupied=new Set(S.assignments.map(a=>a.seat_id));
  const families=S.regs.map(r=>{const men=Number(r[reqKey('men')])||0,women=Number(r[reqKey('women')])||0,am=countAssigned(r.family_name,'men'),aw=countAssigned(r.family_name,'women');return{
@@ -58,12 +61,13 @@ function validate(raw){
  }
  return{groups,unplaced:Array.isArray(raw.unplaced)?raw.unplaced:[],remaining};
 }
-function preview(v,model){
+function preview(v,model,usage){
  const map=new Map();for(const g of v.groups){const k=g.section+'|'+g.family;if(!map.has(k))map.set(k,{family:g.family,section:g.section,n:0,rows:new Set(),reasons:new Set()});const x=map.get(k);x.n+=g.seats.length;g.seats.forEach(s=>x.rows.add(s.row));if(g.reason)x.reasons.add(g.reason)}
  const lines=[...map.values()].map(x=>`${x.family} — ${x.section==='men'?'גברים':'נשים'}: ${x.n} מקומות, שורה ${[...x.rows].join(', ')}`);
  let msg=`מנוע ${model||'AI'} מציע לשבץ ${v.groups.reduce((n,g)=>n+g.seats.length,0)} מקומות.\n\n${lines.slice(0,24).join('\n')}`;
  if(lines.length>24)msg+=`\nועוד ${lines.length-24} משפחות/קבוצות.`;
  const left=[...v.remaining.entries()].filter(([,n])=>n>0);if(left.length)msg+=`\n\nיישארו ללא שיבוץ מלא: ${left.map(([k,n])=>k.split('|')[1]+' '+n).join(', ')}`;
+ if(usage)msg+=`\n\n${usageText(usage)}\n(העלות כבר נצרכה עבור יצירת ההצעה, גם אם לא תשמור אותה.)`;
  return msg+'\n\nהשיבוצים הקיימים לא יוזזו. לשמור את ההצעה?';
 }
 async function runAi(){
@@ -73,11 +77,12 @@ async function runAi(){
  try{
   const r=await fetch(SUPA+'/functions/v1/ai-seat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':KEY},body:JSON.stringify(body)});
   const data=await r.json().catch(()=>({}));
+  if(data.usage)showUsage(data.usage);
   if(!r.ok){if(data.code==='OPENAI_NOT_CONFIGURED')throw Error('חיבור ה-AI טרם הוגדר ב-Supabase.');throw Error(data.error||('HTTP '+r.status))}
-  const v=validate(data.plan);if(!v.groups.length)return alert('מנוע ה-AI לא מצא שיבוץ חדש שאפשר לשמור.');
-  if(!confirm(preview(v,data.model)))return;
+  const v=validate(data.plan);if(!v.groups.length)return alert('מנוע ה-AI לא מצא שיבוץ חדש שאפשר לשמור.\n'+usageText(data.usage));
+  if(!confirm(preview(v,data.model,data.usage)))return;
   for(const g of v.groups)await createGroup(g.family,g.section,g.seats,'ai:'+Date.now()+':'+crypto.randomUUID());
-  await load();alert('שיבוץ ה-AI נשמר בהצלחה.');
+  await load();alert('שיבוץ ה-AI נשמר בהצלחה.\n'+usageText(data.usage));
  }catch(e){alert('שיבוץ AI נכשל: '+e.message)}finally{btn.disabled=false;btn.textContent='שיבוץ AI'}
 }
 async function clearAi(){
@@ -92,7 +97,7 @@ function addUi(){
  const ai=document.createElement('button');ai.id='aiSeatBtn';ai.className='btn aiBtn';ai.type='button';ai.textContent='שיבוץ AI';ai.onclick=runAi;
  const clear=document.createElement('button');clear.id='clearAiBtn';clear.className='btn';clear.type='button';clear.textContent='נקה AI';clear.onclick=()=>clearAi().catch(e=>alert(e.message));
  const auto=document.getElementById('autoSeatBtn');top.insertBefore(ai,auto||document.getElementById('clear'));top.insertBefore(clear,auto||document.getElementById('clear'));
- const st=document.createElement('style');st.textContent='.aiBtn{background:#5b4b86!important;color:#fff!important}.touchMode .aiBtn{min-height:44px;font-size:15px}';document.head.appendChild(st);
+ const st=document.createElement('style');st.textContent='.aiBtn{background:#5b4b86!important;color:#fff!important}.aiUsage{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;background:#f2eefc;color:#4d3c78;font-size:12px;font-weight:750;white-space:nowrap}.touchMode .aiBtn{min-height:44px;font-size:15px}.touchMode .aiUsage{white-space:normal}';document.head.appendChild(st);
 }
 addUi();new MutationObserver(addUi).observe(document.body,{childList:true,subtree:true});
 })();
