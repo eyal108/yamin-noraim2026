@@ -21,7 +21,7 @@ function cleanClone(root){
  root.querySelectorAll('[draggable]').forEach(x=>x.removeAttribute('draggable'));
  return root
 }
-async function prepareVisuals(){window.dispatchEvent(new CustomEvent('yn:seating-rendered'));await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));await sleep(60)}
+async function prepareVisuals(){await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));await sleep(80)}
 function makeSheet(){
  const map=$('layoutMap'),front=document.querySelector('.hall>.front');if(!map)throw Error('תרשים האולם עדיין לא נטען.');
  const sheet=document.createElement('section');sheet.className='exportSheet';sheet.setAttribute('aria-hidden','true');
