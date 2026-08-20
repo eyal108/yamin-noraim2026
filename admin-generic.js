@@ -23,8 +23,12 @@ async function setDefaultLayout(id){const l=current();if(!l||!id)return;const {e
 async function loadRows(){
  if(!currentList){rows=[];renderRows();return}
  setStatus('טוען...');
- const {data,error}=await db.from('yamim_noraim_requests').select('family_id,men,women,updated_at,family:yamim_noraim_families(id,family_name,family_name_normalized,notes,updated_at)').eq('request_list_id',currentList).order('updated_at',{ascending:false});
- if(error)throw error;rows=(data||[]).map(x=>({family_id:x.family_id,men:x.men,women:x.women,updated_at:x.updated_at,family_name:x.family?.family_name||'',notes:x.family?.notes||''})).sort((a,b)=>a.family_name.localeCompare(b.family_name,'he'));
+ const {data:reqData,error:reqError}=await db.from('yamim_noraim_requests').select('family_id,men,women,updated_at').eq('request_list_id',currentList).order('updated_at',{ascending:false});
+ if(reqError)throw reqError;
+ const requests=reqData||[],ids=[...new Set(requests.map(x=>x.family_id).filter(Boolean))];let families=[];
+ if(ids.length){const {data:famData,error:famError}=await db.from('yamim_noraim_families').select('id,family_name,family_name_normalized,notes,updated_at').in('id',ids);if(famError)throw famError;families=famData||[]}
+ const familyMap=new Map(families.map(f=>[f.id,f]));
+ rows=requests.map(x=>{const f=familyMap.get(x.family_id);return{family_id:x.family_id,men:x.men,women:x.women,updated_at:x.updated_at,family_name:f?.family_name||'',notes:f?.notes||''}}).sort((a,b)=>a.family_name.localeCompare(b.family_name,'he'));
  renderRows();setStatus(rows.length+' משפחות');
 }
 function renderRows(){
