@@ -1,0 +1,45 @@
+(()=>{
+const {SUPA,KEY,SITE,makeClient,isAdmin}=YNGeneric,db=makeClient();
+const FN=SUPA+'/functions/v1/request-form';
+const $=id=>document.getElementById(id);let lists=[],timer=null,lastLookup='';
+function val(id){const n=Number($(id)?.value);return Number.isInteger(n)&&n>=0&&n<=100?n:null}
+function msg(t,e=false){const x=$('msg');x.textContent=t;x.className='msg '+(e?'err':'ok')}
+function renderLists(){
+ const box=$('requestCards');
+ if(!lists.length){box.innerHTML='<div class="closed">כרגע אין רשימות פתוחות לרישום.</div>';$('save').disabled=true;return}
+ box.innerHTML=lists.map(l=>`<div class="card requestCard" data-list="${l.id}"><h2>${YNGeneric.esc(l.title)}</h2><div class="requestGrid"><div class="countField"><label for="men-${l.id}">גברים</label><input id="men-${l.id}" type="number" min="0" max="100" step="1" value="0" inputmode="numeric"></div><div class="countField"><label for="women-${l.id}">נשים</label><input id="women-${l.id}" type="number" min="0" max="100" step="1" value="0" inputmode="numeric"></div></div></div>`).join('');
+ $('save').disabled=false;
+}
+async function call(url,opts={}){const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','apikey':KEY,...(opts.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||('HTTP '+r.status));return data}
+async function loadLists(){
+ try{const data=await call(FN);lists=data.lists||[];renderLists()}catch(e){$('requestCards').innerHTML='<div class="closed">לא ניתן לטעון את רשימות הרישום כרגע.</div>';msg('שגיאה בטעינת הנתונים.',true)}
+}
+function clearValues(){for(const l of lists){const m=$('men-'+l.id),w=$('women-'+l.id);if(m)m.value=0;if(w)w.value=0}$('notes').value='';$('existing').classList.remove('show')}
+async function lookup(){
+ const name=$('family').value.trim();if(!name){lastLookup='';clearValues();return}
+ if(name===lastLookup)return;lastLookup=name;
+ try{
+  const data=await call(FN+'?family='+encodeURIComponent(name));
+  if(Array.isArray(data.lists)&&data.lists.length){const old=lists.map(x=>x.id).join(','),next=data.lists.map(x=>x.id).join(',');if(old!==next){lists=data.lists;renderLists()}}
+  clearValues();
+  if(data.family){$('family').value=data.family.family_name;$('notes').value=data.family.notes||'';$('existing').classList.add('show');const map=new Map((data.entries||[]).map(e=>[e.request_list_id,e]));for(const l of lists){const e=map.get(l.id);if(e){$('men-'+l.id).value=e.men;$('women-'+l.id).value=e.women}}}
+ }catch(e){msg('לא הצלחנו לבדוק רישום קיים.',true)}
+}
+async function renderAuth(){
+ const {data:{session}}=await db.auth.getSession(),login=$('googleLogin'),signed=$('signedIn'),who=$('who'),admin=$('adminLink');
+ if(session?.user){login.style.display='none';signed.style.display='block';who.textContent='מחובר: '+(session.user.email||'');admin.style.display=(await isAdmin(db,session))?'inline-block':'none'}else{login.style.display='inline-block';signed.style.display='none';admin.style.display='none'}
+}
+$('googleLogin').onclick=async()=>{const {error}=await db.auth.signInWithOAuth({provider:'google',options:{redirectTo:SITE}});if(error)alert('לא ניתן להתחבר כרגע: '+error.message)};
+$('logout').onclick=async()=>{await db.auth.signOut();await renderAuth()};
+db.auth.onAuthStateChange(()=>setTimeout(renderAuth,0));
+$('family').oninput=()=>{lastLookup='';clearTimeout(timer);timer=setTimeout(lookup,450)};$('family').onblur=lookup;
+$('form').onsubmit=async e=>{
+ e.preventDefault();const name=$('family').value.trim().replace(/\s+/g,' ');if(!name)return msg('יש להזין שם משפחה.',true);
+ const entries=[];for(const l of lists){const men=val('men-'+l.id),women=val('women-'+l.id);if(men===null||women===null)return msg('יש להזין מספר שלם בין 0 ל־100 בכל השדות.',true);entries.push({request_list_id:l.id,men,women})}
+ const save=$('save');save.disabled=true;save.textContent='שומר...';
+ try{await call(FN,{method:'POST',body:JSON.stringify({family_name:name,notes:$('notes').value.trim(),entries})});$('existing').classList.add('show');msg('הרישום נשמר בהצלחה.');lastLookup=name}
+ catch(e){msg(e.message==='One or more request lists are closed'?'אחת הרשימות נסגרה לרישום. רעננו את הדף ונסו שוב.':'לא הצלחנו לשמור את הרישום. נסו שוב.',true)}
+ finally{save.disabled=!lists.length;save.textContent='שמירת הרישום'}
+};
+loadLists();renderAuth();
+})();
