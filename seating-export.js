@@ -38,7 +38,8 @@ async function canvasForSheet(sheet){
  const width=Math.max(1,Math.ceil(sheet.scrollWidth)),height=Math.max(1,Math.ceil(sheet.scrollHeight)),pixels=width*height,mobile=mobileLike();
  const wanted=mobile?1.15:(pixels>3_500_000?1.6:2.2),pixelBudget=mobile?4_000_000:12_000_000,maxDimension=mobile?8192:16000;
  const byPixels=Math.sqrt(pixelBudget/pixels),byDimension=Math.min(maxDimension/width,maxDimension/height),scale=Math.max(.5,Math.min(wanted,byPixels,byDimension));
- return await html2canvas(sheet,{backgroundColor:'#ffffff',scale,useCORS:true,logging:false,width,height,windowWidth:Math.max(width+80,document.documentElement.clientWidth),windowHeight:Math.max(height+80,document.documentElement.clientHeight),scrollX:0,scrollY:0,imageTimeout:8000})
+ const desktopViewport=1600;
+ return await html2canvas(sheet,{backgroundColor:'#ffffff',scale,useCORS:true,logging:false,width,height,windowWidth:Math.max(desktopViewport,width+80),windowHeight:Math.max(1000,height+80),scrollX:0,scrollY:0,imageTimeout:8000})
 }
 function canvasBlob(canvas,type='image/png',quality){return new Promise((resolve,reject)=>{try{canvas.toBlob(b=>b?resolve(b):reject(Error('לא ניתן היה ליצור את קובץ התמונה.')),type,quality)}catch(e){reject(e)}})}
 function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
