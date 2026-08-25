@@ -3,7 +3,7 @@ if(!window.YN||!window.YNGeneric)return;
 const {S}=YN,$=id=>document.getElementById(id);
 let busy=false,activeOutputUrl=null;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const mobileLike=()=>matchMedia?.('(pointer:coarse)')?.matches||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+const mobileLike=()=>((typeof matchMedia==='function'&&matchMedia('(pointer:coarse)').matches)||/Android|iPhone|iPad|iPod/i.test(navigator.userAgent||''));
 function safeName(s){return String(s||'תרשים').trim().replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,'-').replace(/-+/g,'-').slice(0,100)||'תרשים'}
 function currentList(){return S.lists?.find(x=>x.id===S.listId)||null}
 function currentLayout(){return S.layouts?.find(x=>x.id===S.layoutId)||null}
@@ -46,7 +46,7 @@ function pdfBlob(canvas){
  const JsPDF=window.jspdf?.jsPDF;if(!JsPDF)throw Error('רכיב יצירת ה-PDF לא נטען. רענן את העמוד ונסה שוב.');
  const large=canvas.width>3000||canvas.height>2100,format=large?'a3':'a4',orientation=canvas.width>=canvas.height?'landscape':'portrait',pdf=new JsPDF({orientation,unit:'mm',format,compress:true});
  const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),margin=8,maxW=pw-margin*2,maxH=ph-margin*2,ratio=Math.min(maxW/canvas.width,maxH/canvas.height),w=canvas.width*ratio,h=canvas.height*ratio,x=(pw-w)/2,y=(ph-h)/2;
- const jpeg=canvas.toDataURL('image/jpeg',mobileLike()?.88:.94);pdf.addImage(jpeg,'JPEG',x,y,w,h,undefined,'FAST');return pdf.output('blob')
+ const jpeg=canvas.toDataURL('image/jpeg',mobileLike()?0.88:0.94);pdf.addImage(jpeg,'JPEG',x,y,w,h,undefined,'FAST');return pdf.output('blob')
 }
 function closeOutput(){const box=$('exportResultOverlay');box?.remove();if(activeOutputUrl){URL.revokeObjectURL(activeOutputUrl);activeOutputUrl=null}}
 function shareSupported(blob,name,type){try{if(!navigator.share||typeof File==='undefined')return false;const f=new File([blob],name,{type});return !navigator.canShare||navigator.canShare({files:[f]})}catch{return false}}
