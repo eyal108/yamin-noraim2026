@@ -9,7 +9,7 @@ function ensureUi(){
   $('seatPreferenceToggle').onclick=()=>{state.visible=!state.visible;$('seatPreferenceToggle').textContent=state.visible?'הסתר בקשות':'הצג בקשות';decorate()};
   $('seatPreferenceClearFamily').onclick=()=>{state.selectedFamily=null;$('seatPreferenceClearFamily').style.display='none';decorate()};
   const d=document.createElement('dialog');d.id='seatPreferenceDetails';d.className='seatPreferenceDetails';
-  d.innerHTML='<div class="seatPreferenceDialogHead"><h3 id="seatPreferenceDetailsTitle"></h3><button id="seatPreferenceDetailsClose" type="button" aria-label="סגירה">×</button></div><div id="seatPreferenceDetailsBody"></div>';
+  d.innerHTML='<div class="seatPreferenceDialogHead"><h3 id="seatPreferenceDetailsTitle"></h3><button id="seatPreferenceDetailsClose" type="button" aria-label="סגירה">×</button></div><div id="seatPreferenceDetailsBody" class="seatPreferenceDetailsBody"></div>';
   document.body.appendChild(d);$('seatPreferenceDetailsClose').onclick=()=>d.close();
 }
 function key(){return `${YN.S.listId||''}|${YN.S.layoutId||''}`}
