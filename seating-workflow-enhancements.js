@@ -201,6 +201,13 @@ function ensureReleaseHint(){
  h=document.createElement('div');h.id='groupReleaseHint';h.textContent='שחרור קבוצה — גרור מחוץ לתרשים ושחרר';document.body.appendChild(h);return h;
 }
 function endGroupDrag(){draggingGroup=null;document.body.classList.remove('groupDragActive','groupDragOutside')}
+function eventInsideLayoutMap(e){
+ const map=$('layoutMap');if(!map)return false;
+ const path=typeof e.composedPath==='function'?e.composedPath():[];
+ if(path.includes(map))return true;
+ const target=e.target;
+ return typeof Node!=='undefined'&&target instanceof Node&&map.contains(target);
+}
 
 document.addEventListener('dragstart',e=>{
  const seat=e.target.closest?.('.seat[data-group]');if(!seat)return;
@@ -210,14 +217,14 @@ document.addEventListener('dragstart',e=>{
 
 document.addEventListener('dragover',e=>{
  if(!draggingGroup)return;
- const outside=!e.target.closest?.('#layoutMap');
+ const outside=!eventInsideLayoutMap(e);
  document.body.classList.toggle('groupDragOutside',outside);
  if(outside){e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move'}
 });
 
 document.addEventListener('drop',async e=>{
  if(!draggingGroup)return;
- const g=draggingGroup,outside=!e.target.closest?.('#layoutMap');
+ const g=draggingGroup,outside=!eventInsideLayoutMap(e);
  if(!outside){endGroupDrag();return}
  e.preventDefault();e.stopPropagation();
  const rows=S.assignments.filter(a=>String(a.seat_group||a.id)===g),name=rows[0]?.family_name||'הקבוצה';
