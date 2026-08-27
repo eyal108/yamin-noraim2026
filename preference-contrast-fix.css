@@ -1,0 +1,18 @@
+/* Stronger visual contrast for seat-preference alternatives. */
+.seatPrefDialog .seat.prefPriority1.taken{background:#72c4a5!important;border-color:#155b46!important;box-shadow:inset 0 0 0 2px #155b46!important;color:#102c22!important}
+.seatPrefDialog .seat.prefPriority2.taken{background:#aa8be0!important;border-color:#52348b!important;box-shadow:inset 0 0 0 2px #52348b!important;color:#281b48!important}
+.seatPrefDialog .seat.prefPriority3.taken{background:#efb94f!important;border-color:#805300!important;box-shadow:inset 0 0 0 2px #805300!important;color:#422a00!important}
+.seatPrefDialog .priorityTab.active.priority1{background:#b7e2d2!important;border-color:#155b46!important}
+.seatPrefDialog .priorityTab.active.priority2{background:#d2c1ef!important;border-color:#52348b!important}
+.seatPrefDialog .priorityTab.active.priority3{background:#f5d58f!important;border-color:#805300!important}
+.seatPrefDialog .priorityProgress.priority1{background:#b7e2d2!important;color:#123e31!important}
+.seatPrefDialog .priorityProgress.priority2{background:#d2c1ef!important;color:#38245e!important}
+.seatPrefDialog .priorityProgress.priority3{background:#f5d58f!important;color:#5d3d00!important}
+.seatPrefDialog .otherPriorityMark{width:14px!important;height:14px!important;font-size:9px!important;box-shadow:0 0 0 1px #fff,0 1px 2px #0005!important}
+.seatPrefDialog .otherPriorityMark.priority1{background:#176149!important}
+.seatPrefDialog .otherPriorityMark.priority2{background:#57358f!important}
+.seatPrefDialog .otherPriorityMark.priority3{background:#8b5a00!important}
+/* When an admin highlights one family's requests, make the requested seats obvious as well. */
+.seat.seatPreferenceFamily:has(.seatPrefFamilyMarks .priority1){background:#72c4a5!important;border-color:#155b46!important}
+.seat.seatPreferenceFamily:has(.seatPrefFamilyMarks .priority2){background:#aa8be0!important;border-color:#52348b!important}
+.seat.seatPreferenceFamily:has(.seatPrefFamilyMarks .priority3){background:#efb94f!important;border-color:#805300!important}
