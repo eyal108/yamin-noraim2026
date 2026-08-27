@@ -93,7 +93,6 @@ document.addEventListener('dragleave',e=>{if(e.target?.closest?.('#layoutMap')&&
 document.addEventListener('drop',e=>{if(!e.target?.closest?.('#layoutMap'))return;const raw=e.dataTransfer?.getData(MIME);if(!raw)return;e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();$('layoutMap')?.classList.remove('prefRequestDropTarget');let d;try{d=JSON.parse(raw)}catch{return}approvePreference(d.familyId,Number(d.priority),'drag')},true);
 document.addEventListener('click',e=>{if(e.target?.closest?.('.familyPreferenceBtn,.seatRequester'))setTimeout(queueRender,0)},true);
 document.addEventListener('change',e=>{if(e.target?.matches?.('[data-family-priority]'))setTimeout(queueRender,0)},true);
-const obs=new MutationObserver(()=>queueRender());window.addEventListener('load',()=>{const host=document.querySelector('.workspace');if(host)obs.observe(host,{subtree:true,childList:true,characterData:true});queueRender()},{once:true});
 window.addEventListener('yn:seating-rendered',()=>{if(key()!==state.key)loadPrefs();else queueRender()});
 if(window.YN)loadPrefs();else window.addEventListener('load',()=>window.YN&&loadPrefs(),{once:true});
 })();
