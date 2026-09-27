@@ -1,6 +1,7 @@
 (()=>{
 const navs=[...document.querySelectorAll('.appTabs')];
 if(!navs.length)return;
+for(const nav of navs){if(!nav.querySelector('a[href^="synagogue.html"]')){const a=document.createElement('a');a.className='appTab';a.href='synagogue.html';a.textContent='ניהול בית הכנסת';nav.prepend(a)}}
 const params=new URL(location.href).searchParams;
 let org=params.get('org')||'';
 try{org=org||YNGeneric.getAccess?.()?.current?.slug||''}catch{}
